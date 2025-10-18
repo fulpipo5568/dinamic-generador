@@ -13,7 +13,9 @@ function CreateTemplate() {
     cuandoSeUsa: "",
     quienLoLlena: "",
     headerFields: [],
+    headerCheckboxes: [],
     tableColumns: [],
+    secondarySections: [],
     firmas: [],
   })
 
@@ -30,8 +32,38 @@ function CreateTemplate() {
     { value: "textarea", label: "Área de texto" },
   ]
 
+  const sectionTypes = [
+    { value: "table", label: "Tabla de datos" },
+    { value: "materials", label: "Materiales de empaque" },
+    { value: "personnel", label: "Personal" },
+    { value: "subproducts", label: "Subproductos" },
+    { value: "observations", label: "Observaciones" },
+    { value: "rejection", label: "Rechazo de producto" },
+  ]
+
   const handleInputChange = (field, value) => {
     setTemplate((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const addHeaderCheckbox = () => {
+    setTemplate((prev) => ({
+      ...prev,
+      headerCheckboxes: [...prev.headerCheckboxes, { label: "", options: [] }],
+    }))
+  }
+
+  const updateHeaderCheckbox = (index, field, value) => {
+    setTemplate((prev) => ({
+      ...prev,
+      headerCheckboxes: prev.headerCheckboxes.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+    }))
+  }
+
+  const removeHeaderCheckbox = (index) => {
+    setTemplate((prev) => ({
+      ...prev,
+      headerCheckboxes: prev.headerCheckboxes.filter((_, i) => i !== index),
+    }))
   }
 
   const addHeaderField = () => {
@@ -73,6 +105,62 @@ function CreateTemplate() {
     setTemplate((prev) => ({
       ...prev,
       tableColumns: prev.tableColumns.filter((_, i) => i !== index),
+    }))
+  }
+
+  const addSecondarySection = () => {
+    setTemplate((prev) => ({
+      ...prev,
+      secondarySections: [
+        ...prev.secondarySections,
+        { title: "", type: "table", columns: [], rows: 1, multipleInstances: false },
+      ],
+    }))
+  }
+
+  const updateSecondarySection = (index, field, value) => {
+    setTemplate((prev) => ({
+      ...prev,
+      secondarySections: prev.secondarySections.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+    }))
+  }
+
+  const removeSecondarySection = (index) => {
+    setTemplate((prev) => ({
+      ...prev,
+      secondarySections: prev.secondarySections.filter((_, i) => i !== index),
+    }))
+  }
+
+  const addSectionColumn = (sectionIndex) => {
+    setTemplate((prev) => ({
+      ...prev,
+      secondarySections: prev.secondarySections.map((section, i) =>
+        i === sectionIndex ? { ...section, columns: [...section.columns, { label: "", type: "text" }] } : section,
+      ),
+    }))
+  }
+
+  const updateSectionColumn = (sectionIndex, columnIndex, field, value) => {
+    setTemplate((prev) => ({
+      ...prev,
+      secondarySections: prev.secondarySections.map((section, i) =>
+        i === sectionIndex
+          ? {
+              ...section,
+              columns: section.columns.map((col, j) => (j === columnIndex ? { ...col, [field]: value } : col)),
+            }
+          : section,
+      ),
+    }))
+  }
+
+  const removeSectionColumn = (sectionIndex, columnIndex) => {
+    setTemplate((prev) => ({
+      ...prev,
+      secondarySections: prev.secondarySections.map((section, i) =>
+        i === sectionIndex ? { ...section, columns: section.columns.filter((_, j) => j !== columnIndex) } : section,
+      ),
     }))
   }
 
@@ -127,7 +215,9 @@ function CreateTemplate() {
       cuandoSeUsa: "",
       quienLoLlena: "",
       headerFields: [],
+      headerCheckboxes: [],
       tableColumns: [],
+      secondarySections: [],
       firmas: [],
     })
   }
@@ -237,6 +327,55 @@ function CreateTemplate() {
 
       <div className="form-section">
         <div className="section-header">
+          <h2>Checkboxes del Encabezado</h2>
+          <button onClick={addHeaderCheckbox} className="btn-add">
+            + Agregar Checkbox
+          </button>
+        </div>
+
+        {template.headerCheckboxes.map((checkbox, index) => (
+          <div key={index} className="field-item">
+            <div className="field-grid">
+              <div className="form-group">
+                <label>Etiqueta</label>
+                <input
+                  type="text"
+                  value={checkbox.label}
+                  onChange={(e) => updateHeaderCheckbox(index, "label", e.target.value)}
+                  placeholder="Ej: Tipo de almacenamiento"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Opciones (separadas por coma)</label>
+                <input
+                  type="text"
+                  value={checkbox.options?.join(", ") || ""}
+                  onChange={(e) =>
+                    updateHeaderCheckbox(
+                      index,
+                      "options",
+                      e.target.value.split(",").map((o) => o.trim()),
+                    )
+                  }
+                  placeholder="PROVISIONAL, FINAL"
+                />
+              </div>
+
+              <button onClick={() => removeHeaderCheckbox(index)} className="btn-remove" title="Eliminar checkbox">
+                🗑️
+              </button>
+            </div>
+          </div>
+        ))}
+
+        {template.headerCheckboxes.length === 0 && (
+          <p className="empty-state">No hay checkboxes. Agrega uno si necesitas opciones múltiples en el encabezado.</p>
+        )}
+      </div>
+
+      <div className="form-section">
+        <div className="section-header">
           <h2>Campos del Encabezado</h2>
           <button onClick={addHeaderField} className="btn-add">
             + Agregar Campo
@@ -310,7 +449,7 @@ function CreateTemplate() {
 
       <div className="form-section">
         <div className="section-header">
-          <h2>Columnas de la Tabla de Datos</h2>
+          <h2>Columnas de la Tabla Principal</h2>
           <button onClick={addTableColumn} className="btn-add">
             + Agregar Columna
           </button>
@@ -378,6 +517,138 @@ function CreateTemplate() {
 
         {template.tableColumns.length === 0 && (
           <p className="empty-state">No hay columnas definidas. Agrega al menos una.</p>
+        )}
+      </div>
+
+      <div className="form-section">
+        <div className="section-header">
+          <h2>Secciones Adicionales</h2>
+          <button onClick={addSecondarySection} className="btn-add">
+            + Agregar Sección
+          </button>
+        </div>
+
+        {template.secondarySections.map((section, sectionIndex) => (
+          <div key={sectionIndex} className="secondary-section-item">
+            <div className="section-header-row">
+              <h3>Sección {sectionIndex + 1}</h3>
+              <button
+                onClick={() => removeSecondarySection(sectionIndex)}
+                className="btn-remove"
+                title="Eliminar sección"
+              >
+                🗑️
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Título de la Sección</label>
+                <input
+                  type="text"
+                  value={section.title}
+                  onChange={(e) => updateSecondarySection(sectionIndex, "title", e.target.value)}
+                  placeholder="Ej: Material de Empaque, Personal"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Tipo de Sección</label>
+                <select
+                  value={section.type}
+                  onChange={(e) => updateSecondarySection(sectionIndex, "type", e.target.value)}
+                >
+                  {sectionTypes.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {section.type === "table" && (
+                <>
+                  <div className="form-group">
+                    <label>Número de filas iniciales</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={section.rows}
+                      onChange={(e) => updateSecondarySection(sectionIndex, "rows", Number.parseInt(e.target.value))}
+                    />
+                  </div>
+
+                  <div className="form-group checkbox-group">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={section.multipleInstances}
+                        onChange={(e) => updateSecondarySection(sectionIndex, "multipleInstances", e.target.checked)}
+                      />
+                      Permitir múltiples instancias
+                    </label>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {(section.type === "table" || section.type === "materials" || section.type === "subproducts") && (
+              <div className="section-columns">
+                <div className="section-header">
+                  <h4>Columnas de la Sección</h4>
+                  <button onClick={() => addSectionColumn(sectionIndex)} className="btn-add-small">
+                    + Columna
+                  </button>
+                </div>
+
+                {section.columns.map((column, columnIndex) => (
+                  <div key={columnIndex} className="field-item-small">
+                    <div className="field-grid">
+                      <div className="form-group">
+                        <label>Nombre</label>
+                        <input
+                          type="text"
+                          value={column.label}
+                          onChange={(e) => updateSectionColumn(sectionIndex, columnIndex, "label", e.target.value)}
+                          placeholder="Ej: Material, Cantidad"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>Tipo</label>
+                        <select
+                          value={column.type}
+                          onChange={(e) => updateSectionColumn(sectionIndex, columnIndex, "type", e.target.value)}
+                        >
+                          {fieldTypes.map((type) => (
+                            <option key={type.value} value={type.value}>
+                              {type.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <button
+                        onClick={() => removeSectionColumn(sectionIndex, columnIndex)}
+                        className="btn-remove-small"
+                        title="Eliminar"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {section.columns.length === 0 && <p className="empty-state-small">No hay columnas definidas.</p>}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {template.secondarySections.length === 0 && (
+          <p className="empty-state">
+            No hay secciones adicionales. Agrega secciones para materiales, personal, observaciones, etc.
+          </p>
         )}
       </div>
 

@@ -8,7 +8,9 @@ function FillForm() {
   const [templates, setTemplates] = useState([])
   const [selectedTemplate, setSelectedTemplate] = useState(null)
   const [headerData, setHeaderData] = useState({})
+  const [headerCheckboxData, setHeaderCheckboxData] = useState({})
   const [tableRows, setTableRows] = useState([{}])
+  const [secondarySectionsData, setSecondarySectionsData] = useState({})
   const [firmasData, setFirmasData] = useState({})
   const [observaciones, setObservaciones] = useState("")
   const [showSuccess, setShowSuccess] = useState(false)
@@ -24,21 +26,49 @@ function FillForm() {
 
     // Initialize header data
     const initialHeader = {}
-    template.headerFields.forEach((field) => {
+    template.headerFields?.forEach((field) => {
       initialHeader[field.label] = ""
     })
     setHeaderData(initialHeader)
 
+    const initialCheckboxes = {}
+    template.headerCheckboxes?.forEach((checkbox) => {
+      initialCheckboxes[checkbox.label] = ""
+    })
+    setHeaderCheckboxData(initialCheckboxes)
+
     // Initialize table with one empty row
     const initialRow = {}
-    template.tableColumns.forEach((col) => {
+    template.tableColumns?.forEach((col) => {
       initialRow[col.label] = ""
     })
     setTableRows([initialRow])
 
+    const initialSections = {}
+    template.secondarySections?.forEach((section, index) => {
+      if (section.type === "table" || section.type === "materials" || section.type === "subproducts") {
+        const initialRows = []
+        for (let i = 0; i < (section.rows || 1); i++) {
+          const row = {}
+          section.columns?.forEach((col) => {
+            row[col.label] = ""
+          })
+          initialRows.push(row)
+        }
+        initialSections[index] = initialRows
+      } else if (section.type === "personnel") {
+        initialSections[index] = { fileteadores: "", personalPlanta: "" }
+      } else if (section.type === "observations") {
+        initialSections[index] = ""
+      } else if (section.type === "rejection") {
+        initialSections[index] = { seRechazo: false, razon: "" }
+      }
+    })
+    setSecondarySectionsData(initialSections)
+
     // Initialize firmas
     const initialFirmas = {}
-    template.firmas.forEach((firma) => {
+    template.firmas?.forEach((firma) => {
       initialFirmas[firma.puesto] = { nombre: "", fecha: "" }
     })
     setFirmasData(initialFirmas)
@@ -50,13 +80,17 @@ function FillForm() {
     setHeaderData((prev) => ({ ...prev, [label]: value }))
   }
 
+  const handleCheckboxChange = (label, value) => {
+    setHeaderCheckboxData((prev) => ({ ...prev, [label]: value }))
+  }
+
   const handleTableChange = (rowIndex, columnLabel, value) => {
     setTableRows((prev) => prev.map((row, i) => (i === rowIndex ? { ...row, [columnLabel]: value } : row)))
   }
 
   const addTableRow = () => {
     const newRow = {}
-    selectedTemplate.tableColumns.forEach((col) => {
+    selectedTemplate.tableColumns?.forEach((col) => {
       newRow[col.label] = ""
     })
     setTableRows((prev) => [...prev, newRow])
@@ -66,6 +100,53 @@ function FillForm() {
     if (tableRows.length > 1) {
       setTableRows((prev) => prev.filter((_, i) => i !== index))
     }
+  }
+
+  const handleSecondarySectionChange = (sectionIndex, rowIndex, columnLabel, value) => {
+    setSecondarySectionsData((prev) => ({
+      ...prev,
+      [sectionIndex]: prev[sectionIndex].map((row, i) => (i === rowIndex ? { ...row, [columnLabel]: value } : row)),
+    }))
+  }
+
+  const addSecondarySectionRow = (sectionIndex) => {
+    const section = selectedTemplate.secondarySections[sectionIndex]
+    const newRow = {}
+    section.columns?.forEach((col) => {
+      newRow[col.label] = ""
+    })
+    setSecondarySectionsData((prev) => ({
+      ...prev,
+      [sectionIndex]: [...prev[sectionIndex], newRow],
+    }))
+  }
+
+  const removeSecondarySectionRow = (sectionIndex, rowIndex) => {
+    setSecondarySectionsData((prev) => ({
+      ...prev,
+      [sectionIndex]: prev[sectionIndex].filter((_, i) => i !== rowIndex),
+    }))
+  }
+
+  const handlePersonnelChange = (sectionIndex, field, value) => {
+    setSecondarySectionsData((prev) => ({
+      ...prev,
+      [sectionIndex]: { ...prev[sectionIndex], [field]: value },
+    }))
+  }
+
+  const handleObservationChange = (sectionIndex, value) => {
+    setSecondarySectionsData((prev) => ({
+      ...prev,
+      [sectionIndex]: value,
+    }))
+  }
+
+  const handleRejectionChange = (sectionIndex, field, value) => {
+    setSecondarySectionsData((prev) => ({
+      ...prev,
+      [sectionIndex]: { ...prev[sectionIndex], [field]: value },
+    }))
   }
 
   const handleFirmaChange = (puesto, field, value) => {
@@ -114,7 +195,7 @@ function FillForm() {
     // Validate required fields
     const missingFields = []
 
-    selectedTemplate.headerFields.forEach((field) => {
+    selectedTemplate.headerFields?.forEach((field) => {
       if (field.required && !headerData[field.label]) {
         missingFields.push(field.label)
       }
@@ -129,7 +210,9 @@ function FillForm() {
       templateCodigo: selectedTemplate.codigo,
       templateNombre: selectedTemplate.nombre,
       headerData,
+      headerCheckboxData,
       tableRows,
+      secondarySectionsData,
       firmasData,
       observaciones,
       createdAt: new Date().toISOString(),
@@ -200,7 +283,32 @@ function FillForm() {
           date={new Date().toLocaleDateString("es-EC")}
         />
 
-        {selectedTemplate.headerFields.length > 0 && (
+        {selectedTemplate.headerCheckboxes && selectedTemplate.headerCheckboxes.length > 0 && (
+          <div className="checkbox-section">
+            {selectedTemplate.headerCheckboxes.map((checkbox, index) => (
+              <div key={index} className="checkbox-group-inline">
+                <label className="checkbox-label-main">{checkbox.label}:</label>
+                <div className="checkbox-options">
+                  {checkbox.options?.map((option) => (
+                    <label key={option} className="checkbox-option">
+                      <input
+                        type="radio"
+                        name={`checkbox-${index}`}
+                        value={option}
+                        checked={headerCheckboxData[checkbox.label] === option}
+                        onChange={(e) => handleCheckboxChange(checkbox.label, e.target.value)}
+                      />
+                      <span className="checkbox-box">☐</span>
+                      {option}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {selectedTemplate.headerFields && selectedTemplate.headerFields.length > 0 && (
           <div className="header-section">
             <h3>Información General</h3>
             <div className="header-grid">
@@ -217,7 +325,7 @@ function FillForm() {
           </div>
         )}
 
-        {selectedTemplate.tableColumns.length > 0 && (
+        {selectedTemplate.tableColumns && selectedTemplate.tableColumns.length > 0 && (
           <div className="table-section">
             <div className="table-header">
               <h3>Registro de Datos</h3>
@@ -267,8 +375,121 @@ function FillForm() {
           </div>
         )}
 
+        {selectedTemplate.secondarySections &&
+          selectedTemplate.secondarySections.map((section, sectionIndex) => (
+            <div key={sectionIndex} className="secondary-section">
+              <h3>{section.title}</h3>
+
+              {(section.type === "table" || section.type === "materials" || section.type === "subproducts") && (
+                <>
+                  <div className="table-header">
+                    <button onClick={() => addSecondarySectionRow(sectionIndex)} className="btn-add-row">
+                      + Agregar Fila
+                    </button>
+                  </div>
+                  <div className="table-wrapper">
+                    <table className="data-table secondary-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          {section.columns?.map((col, colIndex) => (
+                            <th key={colIndex}>{col.label}</th>
+                          ))}
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {secondarySectionsData[sectionIndex]?.map((row, rowIndex) => (
+                          <tr key={rowIndex}>
+                            <td>{rowIndex + 1}</td>
+                            {section.columns?.map((col, colIndex) => (
+                              <td key={colIndex}>
+                                {renderField(col, row[col.label], (value) =>
+                                  handleSecondarySectionChange(sectionIndex, rowIndex, col.label, value),
+                                )}
+                              </td>
+                            ))}
+                            <td>
+                              <button
+                                onClick={() => removeSecondarySectionRow(sectionIndex, rowIndex)}
+                                className="btn-remove-row"
+                                title="Eliminar fila"
+                              >
+                                🗑️
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {section.type === "personnel" && (
+                <div className="personnel-section">
+                  <div className="form-field">
+                    <label>Fileteadores:</label>
+                    <input
+                      type="number"
+                      value={secondarySectionsData[sectionIndex]?.fileteadores || ""}
+                      onChange={(e) => handlePersonnelChange(sectionIndex, "fileteadores", e.target.value)}
+                      placeholder="Número de fileteadores"
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Personal de Planta:</label>
+                    <input
+                      type="number"
+                      value={secondarySectionsData[sectionIndex]?.personalPlanta || ""}
+                      onChange={(e) => handlePersonnelChange(sectionIndex, "personalPlanta", e.target.value)}
+                      placeholder="Número de personal"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {section.type === "observations" && (
+                <div className="observations-section">
+                  <textarea
+                    value={secondarySectionsData[sectionIndex] || ""}
+                    onChange={(e) => handleObservationChange(sectionIndex, e.target.value)}
+                    placeholder="Escribe aquí las observaciones..."
+                    rows="4"
+                  />
+                </div>
+              )}
+
+              {section.type === "rejection" && (
+                <div className="rejection-section">
+                  <div className="form-field">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={secondarySectionsData[sectionIndex]?.seRechazo || false}
+                        onChange={(e) => handleRejectionChange(sectionIndex, "seRechazo", e.target.checked)}
+                      />
+                      ¿Se rechazó producto?
+                    </label>
+                  </div>
+                  {secondarySectionsData[sectionIndex]?.seRechazo && (
+                    <div className="form-field">
+                      <label>Razón del rechazo:</label>
+                      <textarea
+                        value={secondarySectionsData[sectionIndex]?.razon || ""}
+                        onChange={(e) => handleRejectionChange(sectionIndex, "razon", e.target.value)}
+                        placeholder="Describe la razón del rechazo..."
+                        rows="3"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+
         <div className="observations-section">
-          <h3>Observaciones</h3>
+          <h3>Observaciones Generales</h3>
           <textarea
             value={observaciones}
             onChange={(e) => setObservaciones(e.target.value)}
@@ -277,7 +498,7 @@ function FillForm() {
           />
         </div>
 
-        {selectedTemplate.firmas.length > 0 && (
+        {selectedTemplate.firmas && selectedTemplate.firmas.length > 0 && (
           <div className="signatures-section">
             <h3>Firmas y Aprobaciones</h3>
             <div className="signatures-grid">
