@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import FormHeader from "../components/FormHeader"
+import FormHeader from "../FormHeader"
 import "./ViewForms.css"
 
 function ViewForms() {

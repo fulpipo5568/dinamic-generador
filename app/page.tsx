@@ -1,12 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import Home from "../src/pages/Home"
-import CreateTemplate from "../src/pages/CreateTemplate"
-import FillForm from "../src/pages/FillForm"
-import ViewForms from "../src/pages/ViewForms"
-import "../src/index.css"
-import "../src/App.css"
+import Home from "../components/pages/Home"
+import CreateTemplate from "../components/pages/CreateTemplate"
+import FillForm from "../components/pages/FillForm"
+import ViewForms from "../components/pages/ViewForms"
 
 export default function Page() {
   const [currentPage, setCurrentPage] = useState("home")
